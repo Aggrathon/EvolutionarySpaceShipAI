@@ -1,2 +1,6 @@
 #Virtual Enviroment
 env
+*.whl
+
+#Visual Studio Code
+.vscode
