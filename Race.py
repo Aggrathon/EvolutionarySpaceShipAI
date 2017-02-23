@@ -58,15 +58,16 @@ class Race(object):
 		self.__init_race__()
 		pygame.init()
 		pygame.font.init()
-		screen = pygame.display.set_mode((600,600))
-		font = pygame.font.SysFont("Arial", 12)
-		size = 600 / self.track.scale
+		screen = pygame.display.set_mode((700,700))
+		font = pygame.font.SysFont("Arial", 16)
+		size = 700 / self.track.scale
 		clock = pygame.time.Clock()
 		for i in range(int(self.time_limit*self.time_steps)):
 			self.__race_step__()
 			self.track.draw_track(screen, size)
 			for r in self.racers:
 				r.draw(screen, font, size)
+			self.__draw_scores__(screen, font)
 			pygame.display.update()
 			for event in pygame.event.get():
 				if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -90,6 +91,10 @@ class Race(object):
 			dx, dy = r.evaluate(self.track.points[self.goals[i]],self.track.points[(self.goals[i]+1)%self.track.length])
 			r.velocity = (r.velocity[0]+dx*dt, r.velocity[1]+dy*dt)
 			r.position = (r.position[0] +r.velocity[0]*dt, r.position[1]+r.velocity[1]*dt)
+	
+	def __draw_scores__(self, screen, font):
+		names = font.render("  ".join(["%s: %d"%(r, r.score) for r in self.racers]), True, (0,0,0))
+		screen.blit(names, (0,0))
 			
 
 if __name__ == "__main__":
