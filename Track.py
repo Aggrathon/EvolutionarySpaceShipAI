@@ -46,14 +46,19 @@ class Track(object):
 					length = nlen
 			self.points = new_points
 
+	def draw_track(self, screen, size):
+		screen.fill((255,255,255))
+		oldp = (int(self.points[-1][0]*size), int(self.points[-1][1]*size))
+		for p in self.points:
+			newp = (int(p[0]*size), int(p[1]*size))
+			pygame.draw.circle(screen, (0,255,0), newp, 8, 4)
+			pygame.draw.line(screen, (255,0,0), newp, oldp, 2)
+			oldp = newp
+
 	def show_track(self):
 		pygame.init()
 		screen = pygame.display.set_mode((600,600))
-		screen.fill((255,255,255))
-		screen_points = [(int(p[0]/self.scale*550), int(p[1]/self.scale*550)) for p in self.points]
-		pygame.draw.lines(screen, (255,0,0), True, screen_points, 2)
-		for p in screen_points:
-			pygame.draw.circle(screen, (0,255,0), p, 8, 4)
+		self.draw_track(screen, 600//self.scale)
 		pygame.display.update()
 		while (True):
 			for event in pygame.event.get():
