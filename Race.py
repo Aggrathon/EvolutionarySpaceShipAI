@@ -21,11 +21,17 @@ class BaseAI(object):
 	def add_score(self, score : float):
 		self.score += score
 	
-	def draw(self, screen, size):
+	def draw(self, screen, font, size):
 		startpos = (int(self.position[0]*size), int(self.position[1]*size))
 		endpos = (int((self.position[0]+self.velocity[0])*size), int((self.position[1]+self.velocity[1])*size))
 		pygame.draw.circle(screen, self.color, startpos, 4, 2)
 		pygame.draw.line(screen, self.color, startpos, endpos, 2)
+		text = font.render(str(self), False, self.color)
+		screen.blit(text,startpos)
+
+	def __repr__(self):
+		return self.__class__.__name__
+
 
 class Race(object):
 
@@ -51,14 +57,16 @@ class Race(object):
 	def start_pygame_race(self):
 		self.__init_race__()
 		pygame.init()
+		pygame.font.init()
 		screen = pygame.display.set_mode((600,600))
+		font = pygame.font.SysFont("Arial", 12)
 		size = 600 / self.track.scale
 		clock = pygame.time.Clock()
 		for i in range(int(self.time_limit*self.time_steps)):
 			self.__race_step__()
 			self.track.draw_track(screen, size)
 			for r in self.racers:
-				r.draw(screen, size)
+				r.draw(screen, font, size)
 			pygame.display.update()
 			for event in pygame.event.get():
 				if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -77,7 +85,8 @@ class Race(object):
 		dt = 1.0/self.time_steps
 		for i, r in enumerate(self.racers):
 			if vector.sqr_distance(r.position, self.track.points[self.goals[i]]) < self.trigger_distance:
-				self.goals[i] = (self.goals[i]+1)%len(self.track.points)
+				self.goals[i] = (self.goals[i]+1)%self.track.length
+				r.add_score(1)
 			dx, dy = r.evaluate(self.track.points[self.goals[i]],self.track.points[(self.goals[i]+1)%self.track.length])
 			r.velocity = (r.velocity[0]+dx*dt, r.velocity[1]+dy*dt)
 			r.position = (r.position[0] +r.velocity[0]*dt, r.position[1]+r.velocity[1]*dt)
