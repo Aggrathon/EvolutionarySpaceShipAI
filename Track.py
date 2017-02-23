@@ -24,6 +24,7 @@ def track_length(track, angle_weight):
 class Track(object):
 	points = []
 	scale = 1.0
+	length = 0
 
 	def __init__(self, scale : float = 1.0, points : int = 10, later_points : int = 3):
 		self.scale = scale
@@ -45,6 +46,7 @@ class Track(object):
 					new_points = track
 					length = nlen
 			self.points = new_points
+		self.length = len(self.points)
 
 	def draw_track(self, screen, size):
 		screen.fill((255,255,255))
@@ -52,7 +54,7 @@ class Track(object):
 		for p in self.points:
 			newp = (int(p[0]*size), int(p[1]*size))
 			pygame.draw.circle(screen, (0,255,0), newp, 8, 4)
-			pygame.draw.line(screen, (255,0,0), newp, oldp, 2)
+			pygame.draw.line(screen, (64,64,64), newp, oldp, 2)
 			oldp = newp
 
 	def show_track(self):

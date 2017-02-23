@@ -1,22 +1,25 @@
 from Track import Track
 import pygame
 import random
-
-def sqr_distance(vector1, vector2):
-	dx = vector1[0]-vector2[0]
-	dy = vector1[1]-vector2[1]
-	return dx*dx+dy*dy
+import vector
 
 class BaseAI(object):
 	position = (0.0, 0.0)
 	velocity = (0.0, 0.0)
 	color = (0,0,255)
+	score = 0.0
 
-	def evaluate(goalx, goaly):
+	def __init__(self):
+		self.position = (0.0, 0.0)
+		self.velocity = (0.0, 0.0)
+		self.color = (0,0,255)
+		self.score = 0.0
+
+	def evaluate(self, goal, goal2):
 		return (random.random()*2-1, random.random()*2-1)
 	
-	def add_score(score : float):
-		pass
+	def add_score(self, score : float):
+		self.score += score
 	
 	def draw(self, screen, size):
 		startpos = (int(self.position[0]*size), int(self.position[1]*size))
@@ -26,9 +29,10 @@ class BaseAI(object):
 
 class Race(object):
 
-	def __init__(self, scale : float = 10.0, steps : int = 10, time : float = 10.0, racers = []):
+	def __init__(self, scale : float = 2.0, steps : int = 20, time : float = 10.0, racers = []):
 		self.racers = racers
 		self.track = Track(scale)
+		self.trigger_distance = scale * 0.01
 		self.time_steps = steps
 		self.time_limit = time
 		self.goals = []
@@ -72,9 +76,9 @@ class Race(object):
 	def __race_step__(self):
 		dt = 1.0/self.time_steps
 		for i, r in enumerate(self.racers):
-			if sqr_distance(r.position, self.track.points[self.goals[i]]) < 0.1:
+			if vector.sqr_distance(r.position, self.track.points[self.goals[i]]) < self.trigger_distance:
 				self.goals[i] = (self.goals[i]+1)%len(self.track.points)
-			dx, dy = r.evaluate(self.track.points[self.goals[i]])
+			dx, dy = r.evaluate(self.track.points[self.goals[i]],self.track.points[self.goals[(i+1)%self.track.length]])
 			r.velocity = (r.velocity[0]+dx*dt, r.velocity[1]+dy*dt)
 			r.position = (r.position[0] +r.velocity[0]*dt, r.position[1]+r.velocity[1]*dt)
 			
