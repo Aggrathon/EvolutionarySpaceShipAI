@@ -29,7 +29,7 @@ class BaseAI(object):
 
 class Race(object):
 
-	def __init__(self, scale : float = 2.0, steps : int = 20, time : float = 10.0, racers = []):
+	def __init__(self, scale : float = 4.0, steps : int = 30, time : float = 20.0, racers = []):
 		self.racers = racers
 		self.track = Track(scale)
 		self.trigger_distance = scale * 0.01
@@ -78,7 +78,7 @@ class Race(object):
 		for i, r in enumerate(self.racers):
 			if vector.sqr_distance(r.position, self.track.points[self.goals[i]]) < self.trigger_distance:
 				self.goals[i] = (self.goals[i]+1)%len(self.track.points)
-			dx, dy = r.evaluate(self.track.points[self.goals[i]],self.track.points[self.goals[(i+1)%self.track.length]])
+			dx, dy = r.evaluate(self.track.points[self.goals[i]],self.track.points[(self.goals[i]+1)%self.track.length])
 			r.velocity = (r.velocity[0]+dx*dt, r.velocity[1]+dy*dt)
 			r.position = (r.position[0] +r.velocity[0]*dt, r.position[1]+r.velocity[1]*dt)
 			
