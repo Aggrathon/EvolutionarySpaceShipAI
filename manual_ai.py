@@ -1,7 +1,7 @@
-import Race
+import race
 import vector
 
-class EasyAI(Race.BaseAI):
+class EasyAI(race.BaseAI):
 
 	def __init__(self):
 		super().__init__()
@@ -13,7 +13,7 @@ class EasyAI(Race.BaseAI):
 		return vector.normalize(vector.sub(dir, stop))
 
 
-class DragAI(Race.BaseAI):
+class DragAI(race.BaseAI):
 
 	def __init__(self, scale : float = 1.0):
 		super().__init__()
@@ -29,7 +29,7 @@ class DragAI(Race.BaseAI):
 		return "DragAI (%.1f)" % self.scale
 
 
-class TweakedAI(Race.BaseAI):
+class TweakedAI(race.BaseAI):
 
 	def __init__(self, scale: float = 1.0):
 		super().__init__()
@@ -47,7 +47,7 @@ class TweakedAI(Race.BaseAI):
 
 
 if __name__ == "__main__":
-	r = Race.Race(time = 40)
+	r = race.Race(time = 40)
 	r.add_racer(EasyAI())
 	r.add_racer(DragAI(1))
 	r.add_racer(DragAI(2))
