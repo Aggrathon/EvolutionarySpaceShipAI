@@ -35,3 +35,9 @@ def mult(vec, scalar):
 
 def dot(vec1, vec2):
 	return vec1[0]*vec2[0] + vec1[1]*vec2[1]
+
+def along(proj_vec, on_vec):
+	onlen = length(on_vec)
+	if onlen == 0: onlen = 1
+	ch = 1/onlen
+	return (proj_vec[0]*on_vec[0]*ch, proj_vec[1]*on_vec[1]*ch)
