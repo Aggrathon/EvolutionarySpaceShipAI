@@ -17,9 +17,12 @@ def track_length(track, angle_weight : float):
 		dy2 = track[i][1]-track[(i+1)%len(track)][1]
 		len1 = math.sqrt(dx1*dx1+dy1*dy1)
 		len2 = math.sqrt(dx2*dx2+dy2*dy2)
-		if len1 == 0: len1 = 1
-		if len2 == 0: len2 = 1
-		angle = 1.0-math.acos((dx1*dx2+dy1*dy2)/(len2*len1))/math.pi
+		multlen = len1*len2
+		if multlen == 0: multlen = 1
+		try:
+			angle = 1.0-math.acos((dx1*dx2+dy1*dy2)/multlen)/math.pi
+		except ValueError:
+			angle = 1.0
 		nlen += len1 + (angle*0.55-0.05)*(angle*0.55-0.05)*4*angle_weight
 	return nlen
 
@@ -49,7 +52,9 @@ class Track(object):
 	def __init__(self, scale : float = 1.0, points : int = 10):
 		self.scale = scale*points/10
 		self.length = points
-		if points < 10:
+		if points == 0:
+			self.points = []
+		elif points < 10:
 			length = self.__generate_short_track__(points)
 		elif points < 16:
 			flen = points - points//3
@@ -58,6 +63,18 @@ class Track(object):
 			self.__generate_additional_track__(slen)
 		else:
 			self.__generate_long_track_fast__(points)
+	
+	def set_points(self, points, scale: float = 0.0):
+		if scale == 0.0:
+			for p in points:
+				if p[0] > scale: scale = p[0]
+				if -p[0] > scale: scale = -p[0]
+				if p[1] > scale: scale = p[1]
+				if -p[1] > scale: scale = -p[1]
+		self.scale = scale
+		self.length = len(points)
+		self.points = points
+
 	
 	def __generate_points__(self, num : int = 8, arr = []):
 		if num == 0:
