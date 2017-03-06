@@ -11,10 +11,10 @@ def generate_pop(size: int = 10):
 
 def mutate_pop(pop, percentage: float = 0.2):
 	pop = list(pop)
-	switches = (len(pop)*percentage)//2
+	switches = (len(pop)*percentage)
 	if switches < 1: switches = 1
 	for _ in range(int(switches)):
-		if random.random() < 0.5:
+		if random.random() < 0.6:
 			a = np.random.randint(0, len(pop))
 			b = np.random.randint(0, len(pop)-1)
 			if a == b: b = len(pop)-1
@@ -26,7 +26,7 @@ def mutate_pop(pop, percentage: float = 0.2):
 			pop = pop[:a]+[i for i in reversed(pop[a:])]
 	return pop
 
-def crossover_pop(pop1, pop2):
+def crossover_simple(pop1, pop2):
 	splitf = np.random.normal(0.4, 0.1)
 	if splitf < 0.1: splitf = 0.1
 	elif splitf > 0.7: splitf = 0.7
@@ -55,41 +55,65 @@ def crossover_pop(pop1, pop2):
 			break
 	return npop1, npop2
 
-def crossover2_pop(pop1, pop2):
+def crossover_dmx(pop1, pop2):
+	def gen(split, pop1, pop2):
+		npop = pop1[:split]
+		for i in pop2[split:]:
+			if i not in npop:
+				npop.append(i)
+		for i in pop2[:split]:
+			if i not in npop:
+				npop.append(i)
+		return npop
+	
 	splitf = np.random.normal(0.4, 0.1)
 	if splitf < 0.1: splitf = 0.1
 	elif splitf > 0.7: splitf = 0.7
 	split = int(splitf*len(pop1))
+	return gen(split, pop1, pop2), gen(split, pop2, pop1)
 
-	npop1 = pop1[:split]+pop2[split:]
-	for i in range(split):
-		for j in range(split, len(pop2)):
-			if pop1[i] == pop2[j]:
-				npop1[j] = pop2[i]
-				break
-	npop2 = pop2[:split]+pop1[split:]
-	for i in range(split):
-		for j in range(split, len(pop1)):
-			if pop2[i] == pop1[j]:
-				npop2[j] = pop1[i]
-				break
-	return npop1, npop2
-	
+def crossover_erx(pop1, pop2):
+	for x in pop1:
+		if x not in pop2:
+			print("sad")
+	def gen(pop1, pop2):
+		npop = [random.choice(pop1)]
+		for i in range(len(pop1)-1):
+			poss = []
+			i1 = pop1.index(npop[i])
+			i2 = pop2.index(npop[i])
+			if pop1[i1-1] not in npop:
+				poss.append(pop1[i1-1])
+			if pop1[(i1+1)%len(pop1)] not in npop:
+				poss.append(pop1[(i1+1)%len(pop1)])
+			if pop2[i2-1] not in npop:
+				poss.append(pop2[i2-1])
+			if pop2[(i2+1)%len(pop2)] not in npop:
+				poss.append(pop2[(i2+1)%len(pop2)])
+			if len(poss) == 0:
+				for i in pop1:
+					if i not in npop:
+						npop.append(i)
+						break
+			else:
+				npop.append(random.choice(poss))
+		return npop
+	return gen(pop1, pop2), gen(pop2, pop1)
 
 
 def generate_pops(num: int = 10, size : int = 20):
 	return [generate_pop(size) for _ in range(10)]
 
 def mutate_pops(pops, percentage : float = 0.2):
-	return pops+[mutate_pop(pop, percentage) for pop in pops]
+	return [mutate_pop(pop, percentage) for pop in pops]
 
-def crossover_pops(pops, times = 1):
+def crossover_pops(pops, method, times = 1):
 	length = len(pops)-1
 	result = []
 	for i in range(times):
 		np.random.shuffle(pops)
 		for i in range(0,length,2):
-			p1, p2 = crossover2_pop(pops[i], pops[i+1])
+			p1, p2 = method(pops[i], pops[i+1])
 			result.append(p1)
 			result.append(p2)
 	return result
@@ -101,19 +125,21 @@ def select_pops(pops, points, amount: int = 10, scale : float = 1.0):
 	pops.sort(key=lambda p: track.track_length(get_track(p, points), scale))
 	return pops[:amount]
 
-def evolutionary_generate(points, scale, generation_size = 100, max_generations=500, min_improvment = 0.005, stalled_generations = 20, elitism=True):
+def evolutionary_generate(points, scale, generation_size = 40, max_generations=500,
+		min_improvment = 0.005, stalled_generations = 15, elitism=True):
 	track_length = len(points)
 	population = generate_pops(generation_size, track_length)
 	best = track.track_length(get_track(population[0], points), scale)
 	counter = 0
 	for i in range(max_generations):
-		orig_pop = population
-		population = population + generate_pops(generation_size//2, track_length)
-		population = crossover_pops(population, 2)
-		population = mutate_pops(population, 0.2)
+		parents = population + generate_pops(generation_size, track_length)
+		pool = crossover_pops(parents, crossover_simple)
+		pool += crossover_pops(parents, crossover_dmx)
+		pool += crossover_pops(parents, crossover_erx)
+		pool += mutate_pops(pool, 0.2)
 		if elitism:
-			population += orig_pop[:generation_size//4]
-		population = select_pops(population, points, generation_size, scale)
+			pool += population[:generation_size//8]
+		population = select_pops(pool, points, generation_size, scale)
 		nb = track.track_length(get_track(population[0], points), scale)
 		if best - min_improvment > nb:
 			best = nb
