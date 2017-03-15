@@ -2,6 +2,7 @@ import track
 import numpy as np
 import random
 import math
+from timeit import default_timer as timer
 
 
 def generate_pop(size: int = 10):
@@ -9,21 +10,27 @@ def generate_pop(size: int = 10):
 	np.random.shuffle(arr)
 	return arr
 
-def mutate_pop(pop, percentage: float = 0.2):
-	pop = list(pop)
-	switches = (len(pop)*percentage)
-	if switches < 1: switches = 1
-	for _ in range(int(switches)):
-		if random.random() < 0.6:
-			a = np.random.randint(0, len(pop))
-			b = np.random.randint(0, len(pop)-1)
-			if a == b: b = len(pop)-1
-			temp = pop[a]
-			pop[a] = pop[b]
-			pop[b] = temp
-		else:
-			a = np.random.randint(0,len(pop))
-			pop = pop[:a]+[i for i in reversed(pop[a:])]
+def mutate_pop(population, mutate_chance: float = 0.02, reverse_chance=0.5):
+	pop = list(population)
+	length = len(population)
+	for i in range(length):
+		if random.random() < mutate_chance:
+			o = random.randint(0,length-2)
+			if o == i:
+				o = length-1
+			if random.random() < reverse_chance:
+				if len(pop) != length:
+					print("error", i, o, ' ',len(pop), length)
+				if o < i:
+					pop = pop[:o+1]+pop[i-1:o:-1]+pop[i:]
+				else:
+					pop = pop[:i+1]+pop[o-1:i:-1]+pop[o:]
+				if len(pop) != length:
+					print("error", i, o, ' ',len(pop), length)
+			else:
+				tmp = pop[o]
+				pop[o] = pop[i]
+				pop[i] = tmp
 	return pop
 
 def crossover_simple(pop1, pop2):
@@ -132,11 +139,12 @@ def evolutionary_generate(points, scale, generation_size = 40, max_generations=5
 	best = track.track_length(get_track(population[0], points), scale)
 	counter = 0
 	for i in range(max_generations):
-		parents = population + generate_pops(generation_size, track_length)
+		parents = population + generate_pops(generation_size//2, track_length)
 		pool = crossover_pops(parents, crossover_simple)
 		pool += crossover_pops(parents, crossover_dmx)
 		pool += crossover_pops(parents, crossover_erx)
 		pool += mutate_pops(pool, 0.2)
+		pool += generate_pops(generation_size//2, track_length)
 		if elitism:
 			pool += population[:generation_size//8]
 		population = select_pops(pool, points, generation_size, scale)
@@ -152,14 +160,15 @@ def evolutionary_generate(points, scale, generation_size = 40, max_generations=5
 
 if __name__ == "__main__":
 	track_length = 30
-	#t = track.Track(1, 0)
-	#t.scale = 1
-	#t.length = track_length
-	#points = t.__generate_points__(track_length)
+	time1 = timer()
 	t = track.Track(1, track_length)
+	time2 = timer()
 	solution = evolutionary_generate(t.points, t.scale)
-	print("Original Length: %.2f"%track.track_length(t.points, t.scale))
-	print("Evolutionary Length: %.2f"%track.track_length(solution, t.scale))
+	time3 = timer()
+	timeOrig = time2-time1
+	timerEvo = time3-time2
+	print("Original Length: %.2f (%.2f s)"%(track.track_length(t.points, t.scale), timeOrig))
+	print("Evolutionary Length: %.2f (%.2f s)"%(track.track_length(solution, t.scale), timerEvo))
 	t.show_track()
 	t.set_points(solution, t.scale)
 	t.show_track()

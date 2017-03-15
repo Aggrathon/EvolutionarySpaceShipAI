@@ -26,7 +26,35 @@ def track_length(track, angle_weight : float):
 		nlen += len1 + (angle*0.55-0.05)*(angle*0.55-0.05)*4*angle_weight
 	return nlen
 
-def search_shorter_track(track, angle_weight : float, depth : int = 2):
+def search_shorter_track(track, angle_weight : float):
+	if len(track) < 10:
+		return tsp_exact(track, angle_weight)
+	else:
+		return tsp_2opt(track, angle_weight)
+
+def tsp_exact(track, angle_weight: float):
+	points = track
+	shortest = float("inf")
+	for perm in circle_permutations(track):
+		nlen = track_length(perm, angle_weight)
+		if nlen < shortest:
+			shortest = nlen
+			points = perm
+	return points
+
+def tsp_2opt(track, angle_weight: float):
+	points = track
+	shortest = track_length(track, angle_weight)
+	for its in range(int(math.sqrt(len(points))*3)):
+		print("Search step %d"%its)
+		track, nlen = __tsp_2opt__(track, angle_weight, 2)
+		if nlen < shortest:
+			points = track
+		else:
+			break
+	return points
+
+def __tsp_2opt__(track, angle_weight : float, depth : int = 2):
 	if depth == 0:
 		return track, track_length(track, angle_weight)
 	length = len(track)
@@ -37,7 +65,7 @@ def search_shorter_track(track, angle_weight : float, depth : int = 2):
 			ntrack = track[:i]+[x for x in reversed(track[i:j])]+track[j:]
 			nlen = track_length(ntrack, angle_weight)
 			if nlen < shortest + 0.5*angle_weight:
-				ntrack, nlen = search_shorter_track(ntrack, angle_weight, depth -1)
+				ntrack, nlen = __tsp_2opt__(ntrack, angle_weight, depth -1)
 				if nlen < shortest:
 					shortest = nlen
 					strack = ntrack
@@ -49,21 +77,17 @@ class Track(object):
 	scale = 1.0
 	length = 0
 
-	def __init__(self, scale : float = 1.0, points : int = 10):
+	def __init__(self, scale : float = 1.0, points : int = 10, track_optimizer=search_shorter_track):
 		self.scale = scale*points/10
 		self.length = points
 		if points == 0:
 			self.points = []
-		elif points < 10:
-			length = self.__generate_short_track__(points)
-		elif points < 16:
-			flen = points - points//3
-			slen = points//3
-			self.__generate_short_track__(flen)
-			self.__generate_additional_track__(slen)
 		else:
-			self.__generate_long_track_fast__(points)
-	
+			if track_optimizer is None:
+				self.points = self.__generate_points__(points)
+			else:
+				self.points = track_optimizer(self.__generate_points__(points), self.scale)
+
 	def set_points(self, points, scale: float = 0.0):
 		if scale == 0.0:
 			for p in points:
@@ -75,7 +99,6 @@ class Track(object):
 		self.length = len(points)
 		self.points = points
 
-	
 	def __generate_points__(self, num : int = 8, arr = []):
 		if num == 0:
 			return arr
@@ -86,62 +109,6 @@ class Track(object):
 				return self.__generate_points__(num, arr)
 		arr.append(point)
 		return self.__generate_points__(num-1, arr)
-	
-	def __generate_short_track__(self, length : int = 8):
-		point_list = self.__generate_points__(length)
-		shortest = 5*self.scale*length
-		for perm in circle_permutations(point_list):
-			nlen = track_length(perm, self.scale)
-			if nlen < shortest:
-				shortest = nlen
-				self.points = perm
-	
-	def __generate_additional_track__(self, num : int = 3):
-		point_list = self.__generate_points__(num, [p for p in self.points])[len(self.points):]
-		for point in point_list:
-			new_points = (point,)+self.points
-			length = track_length(new_points, self.scale*2)
-			for i in range(1, len(self.points)):
-				track = self.points[:i]+(point,)+self.points[i:]
-				nlen = track_length(track, self.scale*2)
-				if nlen < length:
-					new_points = track
-					length = nlen
-			self.points = new_points
-	
-	def __generate_long_track_bad__(self, length : int = 20):
-		points = self.__generate_points__(length)
-		track = points
-		shortest = track_length(points, self.scale)*2
-		for its in range(length):
-			index = 0
-			for i in range(0,length):
-				for j in range(i,length):
-					ntrack = points[:i]+points[j:j+1]+points[i+1:j]+points[i:i+1]+points[j+1:]
-					nlen = track_length(ntrack, self.scale)
-					if nlen < shortest:
-						shortest = nlen
-						index = i
-						track = ntrack
-			if index != 0:
-				points = track
-			else:
-				break
-		self.points = track
-				
-	def __generate_long_track_fast__(self, length : int = 20):
-		points = self.__generate_points__(length)
-		shortest = track_length(points, self.scale)
-		for its in range(length//2):
-			print("Search step %d"%its)
-			track, nlen = search_shorter_track(points, self.scale, 2)
-			if nlen < shortest:
-				points = track
-			else:
-				print(its)
-				break
-		self.points = points
-
 
 	def draw_track(self, screen, size):
 		screen.fill((255,255,255))
