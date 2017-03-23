@@ -45,11 +45,13 @@ def tsp_exact(track, angle_weight: float):
 def tsp_2opt(track, angle_weight: float):
 	points = track
 	shortest = track_length(track, angle_weight)
-	for its in range(int(math.sqrt(len(points))*3)):
-		print("Search step %d"%its)
+	steps = int(math.sqrt(len(points))*3)
+	for its in range(steps):
+		print("Search step %d / %d (%d)"%(its,steps, len(points)))
 		track, nlen = __tsp_2opt__(track, angle_weight, 2)
 		if nlen < shortest:
 			points = track
+			shortest = nlen
 		else:
 			break
 	return points
@@ -77,18 +79,17 @@ class Track(object):
 	scale = 1.0
 	length = 0
 
-	def __init__(self, scale : float = 1.0, points : int = 10, track_optimizer=search_shorter_track):
-		self.scale = scale*points/10
-		self.length = points
-		if points == 0:
+	def __init__(self, scale : float = 1.0, length : int = 10, track_optimizer=search_shorter_track):
+		self.scale = scale*length/10
+		self.length = length
+		if length == 0:
 			self.points = []
 		else:
-			if track_optimizer is None:
-				self.points = self.__generate_points__(points)
-			else:
-				self.points = track_optimizer(self.__generate_points__(points), self.scale)
+			self.points = self.__generate_points__(length)
+			if not track_optimizer is None:
+				self.points = track_optimizer(self.points, self.scale)
 
-	def set_points(self, points, scale: float = 0.0):
+	def set_points(self, points, scale: float=0.0):
 		if scale == 0.0:
 			for p in points:
 				if p[0] > scale: scale = p[0]
@@ -99,7 +100,9 @@ class Track(object):
 		self.length = len(points)
 		self.points = points
 
-	def __generate_points__(self, num : int = 8, arr = []):
+	def __generate_points__(self, num : int = 8, arr = None):
+		if arr is None:
+			arr = []
 		if num == 0:
 			return arr
 		point = (random.random()*self.scale, random.random()*self.scale)

@@ -5,6 +5,13 @@ import math
 from timeit import default_timer as timer
 
 
+class Chromosome(object):
+
+	def __init__(self, size: int=10, gene=None):
+		self.size = size
+		if gene is not None:
+			pass
+
 def generate_pop(size: int = 10):
 	arr = [i for i in range(size)]
 	np.random.shuffle(arr)
@@ -72,7 +79,6 @@ def crossover_dmx(pop1, pop2):
 			if i not in npop:
 				npop.append(i)
 		return npop
-	
 	splitf = np.random.normal(0.4, 0.1)
 	if splitf < 0.1: splitf = 0.1
 	elif splitf > 0.7: splitf = 0.7
@@ -111,7 +117,7 @@ def crossover_erx(pop1, pop2):
 def generate_pops(num: int = 10, size : int = 20):
 	return [generate_pop(size) for _ in range(10)]
 
-def mutate_pops(pops, percentage : float = 0.2):
+def mutate_pops(pops, percentage : float = 0.02):
 	return [mutate_pop(pop, percentage) for pop in pops]
 
 def crossover_pops(pops, method, times = 1):
@@ -128,47 +134,79 @@ def crossover_pops(pops, method, times = 1):
 def get_track(pop, points):
 	return [points[i] for i in pop]
 
-def select_pops(pops, points, amount: int = 10, scale : float = 1.0):
-	pops.sort(key=lambda p: track.track_length(get_track(p, points), scale))
-	return pops[:amount]
+def get_fitness(pop, points, scale):
+	return track.track_length(get_track(pop, points), scale)
 
-def evolutionary_generate(points, scale, generation_size = 40, max_generations=500,
+def select_pops(pops, points, amount: int = 10, scale : float = 1.0, roulette: bool=False):
+	if roulette:
+		norm_len = [get_fitness(p, points, scale) for p in pops]
+		norm_max = np.max(norm_len)+1
+		inv_len = [1-l/norm_max for l in norm_len]
+		inv_sum = np.sum(inv_len)
+		fitness = np.multiply(inv_len, 1/inv_sum)
+		selection = np.random.choice(np.arange(len(pops)), size=amount, p=fitness)
+		return [pops[i] for i in sorted(selection, reverse=True, key=lambda s: fitness[s])]
+	else:
+		pops.sort(key=lambda p: get_fitness(p, points, scale))
+		return pops[:amount]
+
+def evolutionary_generate(points, scale, generation_size = 40, max_generations=200,
 		min_improvment = 0.005, stalled_generations = 15, elitism=True):
 	track_length = len(points)
 	population = generate_pops(generation_size, track_length)
 	best = track.track_length(get_track(population[0], points), scale)
 	counter = 0
 	for i in range(max_generations):
-		parents = population + generate_pops(generation_size//2, track_length)
-		pool = crossover_pops(parents, crossover_simple)
+		pool = generate_pops(generation_size//4, track_length)
+		parents = population + pool
+		pool += crossover_pops(parents, crossover_simple)
 		pool += crossover_pops(parents, crossover_dmx)
 		pool += crossover_pops(parents, crossover_erx)
-		pool += mutate_pops(pool, 0.2)
-		pool += generate_pops(generation_size//2, track_length)
+		pool += mutate_pops(pool, (1-i/max_generations)*0.04+0.01)
 		if elitism:
-			pool += population[:generation_size//8]
-		population = select_pops(pool, points, generation_size, scale)
-		nb = track.track_length(get_track(population[0], points), scale)
+			sel_pop = select_pops(pool, points, generation_size-(generation_size//8), scale)
+			elit_pop = population[:generation_size//8]
+			if get_fitness(sel_pop[0], points, scale) > get_fitness(elit_pop[0], points, scale):
+				population = elit_pop+sel_pop
+			else:
+				population = sel_pop+elit_pop
+		else:
+			population = select_pops(pool, points, generation_size, scale)
+		nb = get_fitness(population[0], points, scale)
 		if best - min_improvment > nb:
 			best = nb
 			counter = 0
-		print("Generation %d (%.2f)"%(i, nb))
+		if i%5 == 0:
+			print("Generation %d (%.2f)"%(i, nb))
 		counter += 1
 		if counter > stalled_generations:
+			print("Final Generation %d (%.2f)"%(i, nb))
 			break
 	return get_track(population[0], points)
 
-if __name__ == "__main__":
-	track_length = 30
+def __compare_method__(track_length=30):
 	time1 = timer()
-	t = track.Track(1, track_length)
+	t = track.Track(1, track_length, None)
 	time2 = timer()
 	solution = evolutionary_generate(t.points, t.scale)
 	time3 = timer()
 	timeOrig = time2-time1
 	timerEvo = time3-time2
-	print("Original Length: %.2f (%.2f s)"%(track.track_length(t.points, t.scale), timeOrig))
-	print("Evolutionary Length: %.2f (%.2f s)"%(track.track_length(solution, t.scale), timerEvo))
-	t.show_track()
-	t.set_points(solution, t.scale)
-	t.show_track()
+	return (track.track_length(t.points, t.scale), timeOrig, 
+			track.track_length(solution, t.scale), timerEvo)
+
+def compare_methods(track_size=30, track_count=20, threads=4):
+	from multiprocessing import Pool
+	results = Pool(threads).map(__compare_method__, [track_size]*track_count)
+	orig_len, orig_time, evo_len, evo_time = (0, 0, 0, 0)
+	for olen, otime, elen, etime in results:
+		orig_time += otime
+		orig_len += olen
+		evo_len += elen
+		evo_time += etime
+	print()
+	print("Original Length: %.2f (%.2f s)"%(orig_len/track_count, orig_time/track_count))
+	print("Evolutionary Length: %.2f (%.2f s)"%(evo_len/track_count, evo_time/track_count))
+
+if __name__ == "__main__":
+	compare_methods(30, 20, 4)
